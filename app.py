@@ -456,147 +456,194 @@ elif app_mode == "Business Insights Report":
         st.warning("Please complete the previous sections to generate the report.")
     else:
         df = st.session_state['df']
+        # Ensure 'date' column is datetime
+        df['date'] = pd.to_datetime(df['date'])
 
-        # Display the report using Streamlit components
-        st.markdown("""
-        ## Executive Summary
+        # Function to generate the report HTML
+        def generate_report_html():
+            import io
+            from datetime import datetime
 
-        The following report provides insights into the foot traffic patterns and customer behavior within your retail space...
-        """)
+            report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # Foot Traffic Over Time
-        st.subheader("Foot Traffic Over Time")
-        fig = px.line(df, x='date', y='foot_traffic', labels={'foot_traffic': 'Foot Traffic', 'date': 'Date'})
-        st.plotly_chart(fig, use_container_width=True)
-
-        # Average Foot Traffic by Day of Week Plot
-        df['day_of_week'] = df['date'].dt.day_name()
-        avg_traffic_weekday = df.groupby('day_of_week')['foot_traffic'].mean().reindex([
-            'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
-        fig3 = px.bar(x=avg_traffic_weekday.index, y=avg_traffic_weekday.values,
-                      labels={'x': 'Day of Week', 'y': 'Average Foot Traffic'})
-        # Save the figure to a buffer
-        fig_buffer = io.StringIO()
-        fig3.write_html(fig_buffer, include_plotlyjs=False)
-        html_parts.append("<h3>Average Foot Traffic by Day of Week</h3>")
-        html_parts.append(fig_buffer.getvalue())
-
-        ### Compute Key Observations ###
-        # Find the day(s) with the highest average foot traffic
-        max_avg = avg_traffic_weekday.max()
-        peak_days = avg_traffic_weekday[avg_traffic_weekday == max_avg].index.tolist()
-        peak_days_str = ', '.join(peak_days)
-
-        # Find the busiest day
-        peak_date = df[df['foot_traffic'] == df['foot_traffic'].max()]['date'].dt.strftime('%Y-%m-%d').values[0]
-
-        html_parts.append(f"""
-        <h3>Key Observations</h3>
-        <ul>
-            <li>Foot traffic shows a clear weekly pattern with peaks on <strong>{peak_days_str}</strong>.</li>
-            <li>The busiest day was <strong>{peak_date}</strong>, suggesting optimal times for promotions or increased staffing.</li>
-        </ul>
-        """)
-
-        # Hotspot Analysis
-        html_parts.append("<h2>Hotspot Analysis</h2>")
-
-        if 'positions' in st.session_state and 'cluster_summary' in st.session_state:
-            positions = st.session_state['positions']
-            cluster_summary = st.session_state['cluster_summary']
-            fig_clustered = st.session_state['fig_clustered']
-
-            # Save the clustered plot to a buffer
-            fig_buffer = io.StringIO()
-            fig_clustered.write_html(fig_buffer, include_plotlyjs=False)
-            html_parts.append("<h3>Customer Clusters</h3>")
-            html_parts.append(fig_buffer.getvalue())
-
-            html_parts.append("<h3>Cluster Summary</h3>")
-            # Convert cluster summary to HTML table
-            cluster_summary_html = cluster_summary.to_html(index=False)
-            html_parts.append(cluster_summary_html)
-
-            # Key Observations
-            html_parts.append("""
-            <h3>Key Observations</h3>
-            <ul>
-            """)
-            for index, row in cluster_summary.iterrows():
-                html_parts.append(f"<li><strong>Cluster {row['Cluster']}:</strong> Center at ({row['Center X']:.2f}, {row['Center Y']:.2f}), with {row['Number of Customers']} customers.</li>")
-            html_parts.append("""
-            </ul>
-            <p>These clusters indicate areas where customers tend to spend more time. Consider placing high-margin products or promotional displays in these hotspots to maximize sales.</p>
-            """)
-        else:
-            html_parts.append("<p><em>Hotspot analysis data not available. Please complete the Hotspot Analysis section.</em></p>")
-
-        # Foot Traffic Forecast
-        html_parts.append("<h2>Foot Traffic Forecast</h2>")
-
-        if 'forecast_data' in st.session_state and 'fig_forecast' in st.session_state:
-            forecast_data = st.session_state['forecast_data']
-            fig_forecast = st.session_state['fig_forecast']
-            periods_input = st.session_state.get('periods_input', 30)
-
-            # Save the forecast plot to a buffer
-            fig_buffer = io.StringIO()
-            fig_forecast.write_html(fig_buffer, include_plotlyjs=False)
-            html_parts.append("<h3>Forecasted Foot Traffic</h3>")
-            html_parts.append(fig_buffer.getvalue())
-
-            # Convert forecast data to HTML table
-            forecast_data_html = forecast_data.to_html(index=False)
-            html_parts.append("<h3>Forecast Data</h3>")
-            html_parts.append(forecast_data_html)
-
-            # Compute Key Observations
-            recent_past_avg = df['foot_traffic'].tail(periods_input).mean()
-            forecast_avg = forecast_data['yhat'].mean()
-
-            if forecast_avg > recent_past_avg:
-                trend = 'increase'
-            else:
-                trend = 'decrease'
-
-            top_future_dates = forecast_data.nlargest(3, 'yhat')['ds'].dt.strftime('%Y-%m-%d').tolist()
-            top_dates_str = ', '.join(top_future_dates)
-
+            # Initialize an HTML content string
+            html_parts = []
             html_parts.append(f"""
-            <h3>Key Observations</h3>
+            <html>
+            <head>
+                <title>Business Insights Report</title>
+                <style>
+                    /* Include your CSS styles here */
+                    body {{ font-family: Arial, sans-serif; margin: 40px; }}
+                    h1, h2, h3 {{ color: #2E4053; }}
+                    p {{ font-size: 14px; }}
+                    table {{ border-collapse: collapse; width: 100%; }}
+                    th, td {{ text-align: left; padding: 8px; border: 1px solid #ddd; }}
+                    tr:nth-child(even) {{ background-color: #f2f2f2; }}
+                    ul {{ list-style-type: disc; margin-left: 20px; }}
+                </style>
+            </head>
+            <body>
+            <h1>Business Insights Report</h1>
+            <p><strong>Generated on:</strong> {report_date}</p>
+            """)
+
+            # Executive Summary
+            html_parts.append("""
+            <h2>Executive Summary</h2>
+            <p>The following report provides insights into the foot traffic patterns and customer behavior within your retail space...</p>
+            """)
+
+            # Foot Traffic Over Time Section
+            html_parts.append("<h2>Foot Traffic Over Time</h2>")
+            try:
+                # Generate the figure
+                fig = px.line(df, x='date', y='foot_traffic', labels={'foot_traffic': 'Foot Traffic', 'date': 'Date'})
+                fig_html = fig.to_html(include_plotlyjs='cdn', full_html=False)
+                html_parts.append(fig_html)
+
+                # Average Foot Traffic by Day of Week Section
+                # Ensure 'date' column is datetime
+                df['date'] = pd.to_datetime(df['date'])
+
+                # Calculate day of the week
+                df['day_of_week'] = df['date'].dt.day_name()
+
+                # Calculate average foot traffic by day of the week
+                avg_traffic_weekday = df.groupby('day_of_week')['foot_traffic'].mean().reindex([
+                    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
+
+                # Generate the figure
+                fig3 = px.bar(x=avg_traffic_weekday.index, y=avg_traffic_weekday.values,
+                              labels={'x': 'Day of Week', 'y': 'Average Foot Traffic'})
+
+                # Convert the figure to HTML
+                fig3_html = fig3.to_html(include_plotlyjs='cdn', full_html=False)
+
+                html_parts.append("<h3>Average Foot Traffic by Day of Week</h3>")
+                html_parts.append(fig3_html)
+
+                ### Compute Key Observations ###
+                # Find the day(s) with the highest average foot traffic
+                max_avg = avg_traffic_weekday.max()
+                peak_days = avg_traffic_weekday[avg_traffic_weekday == max_avg].index.tolist()
+                peak_days_str = ', '.join(peak_days)
+
+                # Find the busiest day
+                peak_date = df[df['foot_traffic'] == df['foot_traffic'].max()]['date'].dt.strftime('%Y-%m-%d').values[0]
+
+                html_parts.append(f"""
+                <h3>Key Observations</h3>
+                <ul>
+                    <li>Foot traffic shows a clear weekly pattern with peaks on <strong>{peak_days_str}</strong>.</li>
+                    <li>The busiest day was <strong>{peak_date}</strong>, suggesting optimal times for promotions or increased staffing.</li>
+                </ul>
+                """)
+            except Exception as e:
+                html_parts.append(f"<p><em>An error occurred while processing the 'Foot Traffic Over Time' section: {e}</em></p>")
+
+            # Hotspot Analysis
+            html_parts.append("<h2>Hotspot Analysis</h2>")
+
+            if 'positions' in st.session_state and 'cluster_summary' in st.session_state and 'fig_clustered' in st.session_state:
+                positions = st.session_state['positions']
+                cluster_summary = st.session_state['cluster_summary']
+                fig_clustered = st.session_state['fig_clustered']
+
+                # Convert the clustered plot to HTML
+                fig_clustered_html = fig_clustered.to_html(include_plotlyjs='cdn', full_html=False)
+                html_parts.append("<h3>Customer Clusters</h3>")
+                html_parts.append(fig_clustered_html)
+
+                html_parts.append("<h3>Cluster Summary</h3>")
+                # Convert cluster summary to HTML table
+                cluster_summary_html = cluster_summary.to_html(index=False)
+                html_parts.append(cluster_summary_html)
+
+                # Key Observations
+                html_parts.append("""
+                <h3>Key Observations</h3>
+                <ul>
+                """)
+                for index, row in cluster_summary.iterrows():
+                    html_parts.append(f"<li><strong>Cluster {row['Cluster']}:</strong> Center at ({row['Center X']:.2f}, {row['Center Y']:.2f}), with {row['Number of Customers']} customers.</li>")
+                html_parts.append("""
+                </ul>
+                <p>These clusters indicate areas where customers tend to spend more time. Consider placing high-margin products or promotional displays in these hotspots to maximize sales.</p>
+                """)
+            else:
+                html_parts.append("<p><em>Hotspot analysis data not available. Please complete the Hotspot Analysis section.</em></p>")
+
+            # Foot Traffic Forecast
+            html_parts.append("<h2>Foot Traffic Forecast</h2>")
+
+            if 'forecast_future' in st.session_state and 'fig_future' in st.session_state:
+                forecast_future = st.session_state['forecast_future']
+                fig_future = st.session_state['fig_future']
+                periods_input = st.session_state.get('periods_input', 30)
+
+                # Convert the forecast plot to HTML
+                fig_future_html = fig_future.to_html(include_plotlyjs='cdn', full_html=False)
+                html_parts.append("<h3>Forecasted Foot Traffic</h3>")
+                html_parts.append(fig_future_html)
+
+                # Convert forecast data to HTML table
+                forecast_future_html = forecast_future.to_html(index=False)
+                html_parts.append("<h3>Forecast Data</h3>")
+                html_parts.append(forecast_future_html)
+
+                # Compute Key Observations
+                recent_past_avg = df['foot_traffic'].tail(periods_input).mean()
+                forecast_avg = forecast_future['Forecasted Foot Traffic'].mean()
+
+                if forecast_avg > recent_past_avg:
+                    trend = 'increase'
+                else:
+                    trend = 'decrease'
+
+                top_future_dates = forecast_future.nlargest(3, 'Forecasted Foot Traffic')['Date'].dt.strftime('%Y-%m-%d').tolist()
+                top_dates_str = ', '.join(top_future_dates)
+
+                html_parts.append(f"""
+                <h3>Key Observations</h3>
+                <ul>
+                    <li>Foot traffic is expected to <strong>{trend}</strong> over the next <strong>{periods_input}</strong> days.</li>
+                    <li>Anticipate higher traffic on <strong>{top_dates_str}</strong>, allowing for proactive planning.</li>
+                </ul>
+                """)
+            else:
+                html_parts.append("<p><em>Forecast data not available. Please complete the Foot Traffic Forecasting section.</em></p>")
+
+            # Recommendations
+            html_parts.append("""
+            <h2>Recommendations</h2>
             <ul>
-                <li>Foot traffic is expected to <strong>{trend}</strong> over the next <strong>{periods_input}</strong> days.</li>
-                <li>Anticipate higher traffic on <strong>{top_dates_str}</strong>, allowing for proactive planning.</li>
+                <li><strong>Staffing Adjustments:</strong> Align staff schedules with peak traffic times to ensure optimal customer service.</li>
+                <li><strong>Promotional Timing:</strong> Schedule marketing promotions during periods of increased foot traffic for maximum impact.</li>
+                <li><strong>Store Layout Optimization:</strong> Place popular or high-margin items in identified hotspots to boost sales.</li>
+                <li><strong>Future Planning:</strong> Use the forecasted trends to plan inventory levels and seasonal promotions.</li>
             </ul>
             """)
-        else:
-            html_parts.append("<p><em>Forecast data not available. Please complete the Foot Traffic Forecasting section.</em></p>")
 
-        # Recommendations
-        html_parts.append("""
-        <h2>Recommendations</h2>
-        <ul>
-            <li><strong>Staffing Adjustments:</strong> Align staff schedules with peak traffic times to ensure optimal customer service.</li>
-            <li><strong>Promotional Timing:</strong> Schedule marketing promotions during periods of increased foot traffic for maximum impact.</li>
-            <li><strong>Store Layout Optimization:</strong> Place popular or high-margin items in identified hotspots to boost sales.</li>
-            <li><strong>Future Planning:</strong> Use the forecasted trends to plan inventory levels and seasonal promotions.</li>
-        </ul>
-        """)
+            # Conclusion
+            html_parts.append("""
+            <h2>Conclusion</h2>
+            <p>Leveraging data analytics provides valuable insights into customer behavior and foot traffic patterns. By integrating these findings into your operational and strategic planning, you can enhance customer experience, increase sales, and improve overall store performance.</p>
+            """)
 
-        # Conclusion
-        html_parts.append("""
-        <h2>Conclusion</h2>
-        <p>Leveraging data analytics provides valuable insights into customer behavior and foot traffic patterns. By integrating these findings into your operational and strategic planning, you can enhance customer experience, increase sales, and improve overall store performance.</p>
-        """)
+            # End of HTML content
+            html_parts.append("""
+            </body>
+            </html>
+            """)
 
-        # End of HTML content
-        html_parts.append("""
-        </body>
-        </html>
-        """)
+            # Combine all parts into a single HTML
+            html_report = ''.join(html_parts)
 
-        # Combine all parts into a single HTML
-        html_report = ''.join(html_parts)
+            return html_report
+
+        # Generate the report HTML
+        html_report = generate_report_html()
 
         # Display the report in the app
         st.components.v1.html(html_report, height=800, scrolling=True)
@@ -604,7 +651,7 @@ elif app_mode == "Business Insights Report":
         # Provide a download button
         st.subheader("Download Report")
         if st.button("Generate and Download Report"):
-            html_report = generate_report_html()
+            # The report is already generated, so we can use 'html_report'
             st.download_button(
                 label="Download Report as HTML",
                 data=html_report,
