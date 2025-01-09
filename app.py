@@ -35,19 +35,16 @@ def prev_app_mode():
     if st.session_state['app_mode_index'] > 0:
         st.session_state['app_mode_index'] -= 1
 
-# Synchronize selectbox with session state
-st.sidebar.title("Navigation")
-
-# Navigation buttons in the sidebar
-col1, col2 = st.sidebar.columns([1,1])
+# Navigation buttons on the main page
+st.markdown(f"### Current Section: **{app_modes[st.session_state['app_mode_index']]}**")
+col1, col2, col3 = st.columns([1,6,1])
 
 with col1:
     st.button('Back', on_click=prev_app_mode, disabled=(st.session_state['app_mode_index']==0))
-with col2:
+with col3:
     st.button('Next', on_click=next_app_mode, disabled=(st.session_state['app_mode_index']==len(app_modes)-1))
 
-# Optionally, display the current section
-st.sidebar.markdown(f"### Current Section:\n**{app_modes[st.session_state['app_mode_index']]}**")
+st.markdown("---")  # Optional separator
 
 # Set the current app mode
 app_mode = app_modes[st.session_state['app_mode_index']]
@@ -552,10 +549,10 @@ elif app_mode == "Business Insights Report":
 
         # Provide a download button
         st.subheader("Download Report")
-        if st.button("Generate and Download Report"):
-            st.download_button(
-                label="Download Report as HTML",
-                data=html_report,
-                file_name='business_insights_report.html',
-                mime='text/html'
-            )
+        st.write("Click the button below to download the report as an HTML file.")
+        st.download_button(
+            label="Download Report as HTML",
+            data=html_report,
+            file_name='business_insights_report.html',
+            mime='text/html'
+        )
