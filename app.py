@@ -18,9 +18,27 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# Custom CSS to set the background color to white (optional)
+st.markdown(
+    """
+    <style>
+    .stApp {
+        background-color: white;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 # Define the list of app modes
-app_modes = ["Introduction", "Data Simulation", "Exploratory Data Analysis (EDA)",
-             "Hotspot Analysis", "Foot Traffic Forecasting", "Business Insights Report"]
+app_modes = [
+    "Introduction",
+    "Data Simulation",
+    "Exploratory Data Analysis (EDA)",
+    "Hotspot Analysis",
+    "Foot Traffic Forecasting",
+    "Business Insights Report"
+]
 
 # Initialize the app_mode_index in session_state
 if 'app_mode_index' not in st.session_state:
@@ -35,19 +53,20 @@ def prev_app_mode():
     if st.session_state['app_mode_index'] > 0:
         st.session_state['app_mode_index'] -= 1
 
-# Navigation buttons on the main page
-st.markdown(f"### Current Section: **{app_modes[st.session_state['app_mode_index']]}**")
-col1, col2, col3 = st.columns([1,6,1])
-
-with col1:
-    st.button('Back', on_click=prev_app_mode, disabled=(st.session_state['app_mode_index']==0))
-with col3:
-    st.button('Next', on_click=next_app_mode, disabled=(st.session_state['app_mode_index']==len(app_modes)-1))
-
-st.markdown("---")  # Optional separator
+# Function to display navigation buttons at the bottom
+def navigation_buttons():
+    st.markdown("---")  # Optional separator
+    col1, col2, col3 = st.columns([1, 6, 1])
+    with col1:
+        st.button('Back', on_click=prev_app_mode, disabled=(st.session_state['app_mode_index'] == 0))
+    with col3:
+        st.button('Next', on_click=next_app_mode, disabled=(st.session_state['app_mode_index'] == len(app_modes) - 1))
 
 # Set the current app mode
 app_mode = app_modes[st.session_state['app_mode_index']]
+
+# Display the Current Section heading
+st.markdown(f"**{app_mode}**")
 
 # Your existing code to handle each app mode
 if app_mode == "Introduction":
@@ -62,6 +81,10 @@ if app_mode == "Introduction":
     - Forecast future foot traffic using time series models.
     - Generate a business insights report.
     """)
+
+    # Add navigation buttons at the bottom
+    navigation_buttons()
+
 elif app_mode == "Data Simulation":
     st.title("Data Simulation or Upload")
 
@@ -94,6 +117,10 @@ elif app_mode == "Data Simulation":
 
     if 'df' in st.session_state:
         st.write(st.session_state['df'].head())
+
+    # Add navigation buttons at the bottom
+    navigation_buttons()
+
 elif app_mode == "Exploratory Data Analysis (EDA)":
     st.title("Exploratory Data Analysis (EDA)")
 
@@ -124,6 +151,10 @@ elif app_mode == "Exploratory Data Analysis (EDA)":
             'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
         fig3 = px.bar(x=avg_traffic_weekday.index, y=avg_traffic_weekday.values, title='Average Foot Traffic by Day of Week', labels={'x': 'Day of Week', 'y': 'Average Foot Traffic'})
         st.plotly_chart(fig3, use_container_width=True)
+
+    # Add navigation buttons at the bottom
+    navigation_buttons()
+
 elif app_mode == "Hotspot Analysis":
     st.title("Hotspot Analysis")
 
@@ -134,6 +165,8 @@ elif app_mode == "Hotspot Analysis":
     st.header("1. Choose How to Input Spatial Data")
 
     data_option = st.selectbox("Select data input method", ["Upload Data", "Simulate Data"])
+
+    positions = None  # Initialize positions to None
 
     if data_option == "Upload Data":
         st.subheader("Upload Customer Positions")
@@ -154,8 +187,11 @@ elif app_mode == "Hotspot Analysis":
         st.success("Simulated customer positions created!")
         st.write(positions.head())
 
-    if 'positions' not in st.session_state and data_option != "Load Data from Camera":
+    if positions is not None:
         st.session_state['positions'] = positions
+    else:
+        positions = st.session_state.get('positions', None)
+
     if positions is not None:
         st.header("2. Define Store Layout (Walls)")
         st.markdown("""
@@ -266,10 +302,16 @@ elif app_mode == "Hotspot Analysis":
         - Higher customer counts in a cluster suggest more popular areas.
         """)
 
-    # Store data in session_state
-    st.session_state['positions'] = positions
-    st.session_state['cluster_summary'] = cluster_summary
-    st.session_state['fig_clustered'] = fig_clustered
+        # Store data in session_state
+        st.session_state['positions'] = positions
+        st.session_state['cluster_summary'] = cluster_summary
+        st.session_state['fig_clustered'] = fig_clustered
+
+    else:
+        st.warning("Please upload or simulate customer position data.")
+
+    # Add navigation buttons at the bottom (ensure this is outside of all conditions)
+    navigation_buttons()
 
 elif app_mode == "Foot Traffic Forecasting":
     st.title("Foot Traffic Forecasting")
@@ -288,11 +330,11 @@ elif app_mode == "Foot Traffic Forecasting":
         st.subheader("Include Holidays in the Model")
         holiday_option = st.radio(
             "Do you want to include holidays in the model?",
-            ('No', 'Use Predefined Holidays', 'Input Custom Holidays', 'Upload Holiday File'))
+            ('No', 'Use Predefined Holidays', 'Input Custom Holidays', 'Upload Holiday File')
+        )
 
         if holiday_option == 'Use Predefined Holidays':
             # Define a dataframe of predefined holidays (example using US holidays)
-            from prophet.make_holidays import make_holidays_df
             years = [df['date'].dt.year.min(), df['date'].dt.year.max() + 1]
             holidays = make_holidays_df(year_list=list(range(years[0], years[1] + 1)), country='US')
             st.success("Predefined holidays included in the model.")
@@ -439,7 +481,6 @@ elif app_mode == "Foot Traffic Forecasting":
         components_fig = model.plot_components(forecast)
         st.pyplot(components_fig)
 
-        import io
         buf = io.BytesIO()
         components_fig.savefig(buf, format='png')
         buf.seek(0)
@@ -459,6 +500,9 @@ elif app_mode == "Foot Traffic Forecasting":
         st.session_state['fig_future'] = fig_future
         st.session_state['periods_input'] = periods_input
 
+    # Add navigation buttons at the bottom
+    navigation_buttons()
+
 elif app_mode == "Business Insights Report":
     st.title("Business Insights Report")
 
@@ -470,7 +514,6 @@ elif app_mode == "Business Insights Report":
 
         # Function to generate the report HTML
         def generate_report_html():
-            import io
             import base64
             from datetime import datetime
 
@@ -556,3 +599,6 @@ elif app_mode == "Business Insights Report":
             file_name='business_insights_report.html',
             mime='text/html'
         )
+
+    # Add navigation buttons at the bottom
+    navigation_buttons()
