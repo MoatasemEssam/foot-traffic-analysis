@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from io import BytesIO
 import seaborn as sns
 from sklearn.cluster import KMeans
 from prophet import Prophet
@@ -16,18 +17,6 @@ st.set_page_config(
     page_title="Retail Foot Traffic Analysis",
     layout="wide",
     initial_sidebar_state="expanded",
-)
-
-# Custom CSS to set the background color to white (optional)
-st.markdown(
-    """
-    <style>
-    .stApp {
-        background-color: white;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
 )
 
 # Define the list of app modes
