@@ -1,27 +1,34 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 from io import BytesIO
-import seaborn as sns
 from sklearn.cluster import KMeans
 from prophet import Prophet
-from prophet.plot import plot_plotly
 import plotly.express as px
 import plotly.graph_objects as go
 from prophet.make_holidays import make_holidays_df
-import datetime
-import io
+from datetime import datetime
+from scipy import stats  # Importing scipy.stats for statistical functions
 
-st.set_page_config(
-    page_title="Retail Foot Traffic Analysis",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+st.set_page_config(layout="wide", initial_sidebar_state="expanded")
+
+# Function to inject custom CSS
+def set_background_color():
+    st.markdown(
+        """
+        <style>
+        .stApp {
+            background-color: #FFFFFF;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+set_background_color()
 
 # Define the list of app modes
 app_modes = [
-    "Introduction",
     "Data Simulation",
     "Exploratory Data Analysis (EDA)",
     "Hotspot Analysis",
@@ -33,7 +40,7 @@ app_modes = [
 if 'app_mode_index' not in st.session_state:
     st.session_state['app_mode_index'] = 0
 
-# Define functions to handle Next and Back
+# Functions to handle Next and Back
 def next_app_mode():
     if st.session_state['app_mode_index'] < len(app_modes) - 1:
         st.session_state['app_mode_index'] += 1
@@ -44,39 +51,15 @@ def prev_app_mode():
 
 # Function to display navigation buttons at the bottom
 def navigation_buttons():
-    st.markdown("---")  # Optional separator
+    st.markdown("---")
     col1, col2, col3 = st.columns([1, 6, 1])
     with col1:
         st.button('Back', on_click=prev_app_mode, disabled=(st.session_state['app_mode_index'] == 0))
     with col3:
         st.button('Next', on_click=next_app_mode, disabled=(st.session_state['app_mode_index'] == len(app_modes) - 1))
 
-# Set the current app mode
-app_mode = app_modes[st.session_state['app_mode_index']]
-
-# Display the Current Section heading
-st.markdown(f"**{app_mode}**")
-
-# Your existing code to handle each app mode
-if app_mode == "Introduction":
-    st.title("AI-Powered Retail Foot Traffic")
-    st.markdown("""
-    Welcome to the Retail Foot Traffic Analysis app! This app demonstrates how AI and data analytics can be applied to retail foot traffic data to provide actionable insights.
-
-    **Features:**
-    - Simulate or load foot traffic data.
-    - Perform exploratory data analysis.
-    - Identify hotspots using clustering algorithms.
-    - Forecast future foot traffic using time series models.
-    - Generate a business insights report.
-    """)
-
-    # Add navigation buttons at the bottom
-    navigation_buttons()
-
-elif app_mode == "Data Simulation":
-    st.title("Data Simulation or Upload")
-
+# Function for Data Simulation
+def data_simulation():
     st.header("1. Upload Your Own Data")
     uploaded_file = st.file_uploader("Upload a CSV file with 'date' and 'foot_traffic' columns", type=["csv"])
 
@@ -107,12 +90,10 @@ elif app_mode == "Data Simulation":
     if 'df' in st.session_state:
         st.write(st.session_state['df'].head())
 
-    # Add navigation buttons at the bottom
     navigation_buttons()
 
-elif app_mode == "Exploratory Data Analysis (EDA)":
-    st.title("Exploratory Data Analysis (EDA)")
-
+# Function for Exploratory Data Analysis
+def exploratory_data_analysis():
     if 'df' not in st.session_state:
         st.warning("Please upload or simulate data first in the 'Data Simulation' section.")
     else:
@@ -120,69 +101,128 @@ elif app_mode == "Exploratory Data Analysis (EDA)":
 
         # Time Series Plot
         st.subheader("Foot Traffic Over Time")
-        fig = px.line(df, x='date', y='foot_traffic', title='Daily Foot Traffic', labels={'foot_traffic': 'Foot Traffic', 'date': 'Date'})
+        fig = px.line(df, x='date', y='foot_traffic', title='Daily Foot Traffic',
+                      labels={'foot_traffic': 'Foot Traffic', 'date': 'Date'})
         st.plotly_chart(fig, use_container_width=True)
 
         # Summary Statistics
         st.subheader("Summary Statistics")
-        stats = df['foot_traffic'].describe()
-        st.table(stats)
+        summary_stats = df['foot_traffic'].describe()
+        st.table(summary_stats)
 
         # Distribution Plot
         st.subheader("Distribution of Foot Traffic")
-        fig2 = px.histogram(df, x='foot_traffic', nbins=20, title='Distribution of Foot Traffic', labels={'foot_traffic': 'Foot Traffic'})
+
+        # Create figure
+        fig2 = go.Figure()
+
+        # Add histogram
+        fig2.add_trace(go.Histogram(
+            x=df['foot_traffic'],
+            nbinsx=30,  # Adjust the number of bins as needed
+            histnorm='probability density',
+            marker_color='rgba(0, 128, 128, 0.6)',  # Teal color with transparency
+            name='Histogram'
+        ))
+
+        # Generate KDE curve
+        x_values = np.linspace(df['foot_traffic'].min(), df['foot_traffic'].max(), 1000)
+        kde = stats.gaussian_kde(df['foot_traffic'])
+        fig2.add_trace(go.Scatter(
+            x=x_values,
+            y=kde(x_values),
+            mode='lines',
+            name='Density Curve',
+            line=dict(color='darkblue', width=2)
+        ))
+
+        # Update layout
+        fig2.update_layout(
+            title='Distribution of Foot Traffic',
+            xaxis_title='Foot Traffic',
+            yaxis_title='Probability Density',
+            bargap=0.05,
+            template='plotly_white',
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.01,
+                xanchor="right",
+                x=1
+            ),
+            margin=dict(l=40, r=40, t=60, b=40)
+        )
+
+        # Display the plot
         st.plotly_chart(fig2, use_container_width=True)
 
-        # Additional Analysis: Traffic by Day of Week
+        # Traffic by Day of Week
         st.subheader("Average Foot Traffic by Day of Week")
         df['day_of_week'] = df['date'].dt.day_name()
         avg_traffic_weekday = df.groupby('day_of_week')['foot_traffic'].mean().reindex([
             'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'])
-        fig3 = px.bar(x=avg_traffic_weekday.index, y=avg_traffic_weekday.values, title='Average Foot Traffic by Day of Week', labels={'x': 'Day of Week', 'y': 'Average Foot Traffic'})
+        fig3 = px.bar(x=avg_traffic_weekday.index, y=avg_traffic_weekday.values,
+                      title='Average Foot Traffic by Day of Week',
+                      labels={'x': 'Day of Week', 'y': 'Average Foot Traffic'})
         st.plotly_chart(fig3, use_container_width=True)
 
-    # Add navigation buttons at the bottom
     navigation_buttons()
 
-elif app_mode == "Hotspot Analysis":
-    st.title("Hotspot Analysis")
-
+# Function for Hotspot Analysis
+def hotspot_analysis():
     st.markdown("""
+    # Hotspot Analysis
+
     This section performs clustering on spatial customer data to identify hotspots within the retail space. The store layout, including walls, is displayed for context.
     """)
 
-    st.header("1. Choose How to Input Spatial Data")
+    st.header("Upload Customer Position Data")
 
-    data_option = st.selectbox("Select data input method", ["Upload Data", "Simulate Data"])
+    st.markdown("""
+    Please upload a CSV file containing customer positions with **'x'** and **'y'** columns.
+    The **'x'** and **'y'** values should represent the coordinates of customers within the store layout.
 
-    positions = None  # Initialize positions to None
+    **Or**, enter the number of customers to simulate and click the button below to generate customer position data.
+    """)
 
-    if data_option == "Upload Data":
-        st.subheader("Upload Customer Positions")
-        uploaded_file = st.file_uploader("Upload a CSV file with 'x' and 'y' columns", type=["csv"])
-        if uploaded_file is not None:
+    positions = None
+
+    # File uploader for positions data
+    uploaded_file = st.file_uploader("Upload a CSV file with 'x' and 'y' columns", type=["csv"])
+    if uploaded_file is not None:
+        try:
             positions = pd.read_csv(uploaded_file)
-            st.success("Data loaded successfully!")
-            st.write(positions.head())
-        else:
-            st.warning("Please upload a CSV file.")
-    elif data_option == "Simulate Data":
-        st.subheader("Simulate Customer Positions")
-        num_customers = st.slider("Number of customers to simulate", 10, 500, 100)
+            if {'x', 'y'}.issubset(positions.columns):
+                st.success("Customer positions data loaded successfully!")
+                st.write(positions.head())
+                st.session_state['positions'] = positions
+            else:
+                st.error("The uploaded CSV file must contain 'x' and 'y' columns.")
+        except Exception as e:
+            st.error(f"An error occurred while reading the file: {e}")
+
+    # Simulate data button
+    st.subheader("Or Simulate Customer Positions")
+    num_customers = st.number_input(
+        "Enter the number of customers to simulate",
+        min_value=1,
+        value=100,
+        step=1,
+        key='num_customers'
+    )
+    if st.button("Simulate Data"):
         positions = pd.DataFrame({
-            'x': np.random.uniform(0, 100, num_customers),
-            'y': np.random.uniform(0, 100, num_customers)
+            'x': np.random.uniform(0, 100, int(num_customers)),
+            'y': np.random.uniform(0, 100, int(num_customers))
         })
         st.success("Simulated customer positions created!")
         st.write(positions.head())
-
-    if positions is not None:
         st.session_state['positions'] = positions
-    else:
-        positions = st.session_state.get('positions', None)
 
-    if positions is not None:
-        st.header("2. Define Store Layout (Walls)")
+    if 'positions' in st.session_state:
+        positions = st.session_state['positions']
+
+        st.header("Define Store Layout (Walls)")
         st.markdown("""
         You can either use a predefined store layout or upload a file containing the store's wall coordinates.
         """)
@@ -204,15 +244,24 @@ elif app_mode == "Hotspot Analysis":
             st.success("Using default store layout.")
         else:
             # Upload layout file
-            layout_file = st.file_uploader("Upload a CSV file with wall coordinates ('x0', 'y0', 'x1', 'y1')", type=["csv"])
+            st.subheader("Upload Store Layout File")
+            st.markdown("""
+            Please upload a CSV file containing wall coordinates with columns: **'x0'**, **'y0'**, **'x1'**, **'y1'**.
+            Each row represents a wall segment from point (**x0**, **y0**) to point (**x1**, **y1**).
+            """)
+            layout_file = st.file_uploader("Upload a CSV file with wall coordinates", type=["csv"], key='layout_file')
             if layout_file is not None:
-                walls_df = pd.read_csv(layout_file)
-                if {'x0', 'y0', 'x1', 'y1'}.issubset(walls_df.columns):
-                    walls = walls_df.to_dict('records')
-                    st.success("Store layout loaded successfully!")
-                    st.write(walls_df.head())
-                else:
-                    st.error("The uploaded CSV file must contain 'x0', 'y0', 'x1', 'y1' columns.")
+                try:
+                    walls_df = pd.read_csv(layout_file)
+                    if {'x0', 'y0', 'x1', 'y1'}.issubset(walls_df.columns):
+                        walls = walls_df.to_dict('records')
+                        st.success("Store layout loaded successfully!")
+                        st.write(walls_df.head())
+                    else:
+                        st.error("The uploaded CSV file must contain 'x0', 'y0', 'x1', 'y1' columns.")
+                        walls = []
+                except Exception as e:
+                    st.error(f"An error occurred while reading the file: {e}")
                     walls = []
             else:
                 st.warning("Please upload a CSV file containing wall coordinates.")
@@ -251,8 +300,14 @@ elif app_mode == "Hotspot Analysis":
         st.subheader("Clustering and Hotspot Identification")
 
         # Clustering
-        optimal_k = st.slider("Number of Clusters (k)", 1, 10, 4)
-        kmeans = KMeans(n_clusters=optimal_k, random_state=42)
+        optimal_k = st.number_input(
+            "Enter the number of clusters (k) for KMeans clustering",
+            min_value=1,
+            value=4,
+            step=1,
+            key='optimal_k'
+        )
+        kmeans = KMeans(n_clusters=int(optimal_k), random_state=42)
         positions['cluster'] = kmeans.fit_predict(positions[['x', 'y']])
 
         # Plot clustered positions
@@ -297,14 +352,12 @@ elif app_mode == "Hotspot Analysis":
         st.session_state['fig_clustered'] = fig_clustered
 
     else:
-        st.warning("Please upload or simulate customer position data.")
+        st.info("Either upload customer data or simulate data to proceed.")
 
-    # Add navigation buttons at the bottom (ensure this is outside of all conditions)
     navigation_buttons()
 
-elif app_mode == "Foot Traffic Forecasting":
-    st.title("Foot Traffic Forecasting")
-
+# Function for Foot Traffic Forecasting
+def foot_traffic_forecasting():
     if 'df' not in st.session_state:
         st.warning("Please upload or simulate data first in the 'Data Simulation' section.")
     else:
@@ -313,7 +366,6 @@ elif app_mode == "Foot Traffic Forecasting":
         # Select forecast parameters
         st.subheader("Forecast Parameters")
         periods_input = st.number_input('Number of days to forecast into the future:', min_value=1, max_value=365, value=30)
-        st.write("")
 
         # Option to include holidays
         st.subheader("Include Holidays in the Model")
@@ -327,12 +379,11 @@ elif app_mode == "Foot Traffic Forecasting":
             years = [df['date'].dt.year.min(), df['date'].dt.year.max() + 1]
             holidays = make_holidays_df(year_list=list(range(years[0], years[1] + 1)), country='US')
             st.success("Predefined holidays included in the model.")
-
         elif holiday_option == 'Input Custom Holidays':
             st.markdown("### Input Custom Holiday Dates and Names")
             num_holidays = st.number_input('How many holidays do you want to input?', min_value=1, max_value=20, value=5)
             holiday_dates = []
-            for i in range(num_holidays):
+            for i in range(int(num_holidays)):
                 cols = st.columns(2)
                 with cols[0]:
                     date = st.date_input(f'Holiday Date {i+1}', value=None, key=f'holiday_date_{i}')
@@ -347,7 +398,6 @@ elif app_mode == "Foot Traffic Forecasting":
             else:
                 st.warning("No holidays have been added.")
                 holidays = None
-
         elif holiday_option == 'Upload Holiday File':
             st.markdown("### Upload a CSV File with Holiday Dates")
             uploaded_holiday_file = st.file_uploader("Upload a CSV file with 'ds' and 'holiday' columns", type=["csv"])
@@ -470,7 +520,7 @@ elif app_mode == "Foot Traffic Forecasting":
         components_fig = model.plot_components(forecast)
         st.pyplot(components_fig)
 
-        buf = io.BytesIO()
+        buf = BytesIO()
         components_fig.savefig(buf, format='png')
         buf.seek(0)
         st.session_state['forecast_components_image'] = buf
@@ -489,12 +539,10 @@ elif app_mode == "Foot Traffic Forecasting":
         st.session_state['fig_future'] = fig_future
         st.session_state['periods_input'] = periods_input
 
-    # Add navigation buttons at the bottom
     navigation_buttons()
 
-elif app_mode == "Business Insights Report":
-    st.title("Business Insights Report")
-
+# Function for Business Insights Report
+def business_insights_report():
     if 'df' not in st.session_state:
         st.warning("Please complete the previous sections to generate the report.")
     else:
@@ -504,7 +552,6 @@ elif app_mode == "Business Insights Report":
         # Function to generate the report HTML
         def generate_report_html():
             import base64
-            from datetime import datetime
 
             report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
@@ -515,7 +562,6 @@ elif app_mode == "Business Insights Report":
             <head>
                 <title>Business Insights Report</title>
                 <style>
-                    /* Include your CSS styles here */
                     body {{ font-family: Arial, sans-serif; margin: 40px; }}
                     h1, h2, h3 {{ color: #2E4053; }}
                     p {{ font-size: 14px; }}
@@ -531,8 +577,7 @@ elif app_mode == "Business Insights Report":
             <p><strong>Generated on:</strong> {report_date}</p>
             """)
 
-            # Include your report content here
-            # Example: Foot Traffic Forecast
+            # Foot Traffic Forecast
             html_parts.append("<h2>Foot Traffic Forecast</h2>")
 
             if 'forecast_future' in st.session_state and 'fig_future' in st.session_state:
@@ -558,7 +603,6 @@ elif app_mode == "Business Insights Report":
                     html_parts.append(f'<img src="data:image/png;base64,{base64_img}" alt="Forecast Components">')
                 else:
                     html_parts.append("<p><em>Forecast components not available. Please complete the Foot Traffic Forecasting section.</em></p>")
-
             else:
                 html_parts.append("<p><em>Forecast data not available. Please complete the Foot Traffic Forecasting section.</em></p>")
 
@@ -589,5 +633,24 @@ elif app_mode == "Business Insights Report":
             mime='text/html'
         )
 
-    # Add navigation buttons at the bottom
     navigation_buttons()
+
+# Main code to run the app
+def main():
+    # Set the current app mode
+    app_mode = app_modes[st.session_state['app_mode_index']]
+
+    # Call the appropriate function based on app_mode
+    if app_mode == "Data Simulation":
+        data_simulation()
+    elif app_mode == "Exploratory Data Analysis (EDA)":
+        exploratory_data_analysis()
+    elif app_mode == "Hotspot Analysis":
+        hotspot_analysis()
+    elif app_mode == "Foot Traffic Forecasting":
+        foot_traffic_forecasting()
+    elif app_mode == "Business Insights Report":
+        business_insights_report()
+
+if __name__ == "__main__":
+    main()
