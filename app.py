@@ -60,15 +60,22 @@ def navigation_buttons():
 
 # Function for Data Simulation
 def data_simulation():
-    st.header("1. Upload Your Own Data")
-    uploaded_file = st.file_uploader("Upload a CSV file with 'date' and 'foot_traffic' columns", type=["csv"])
+    st.header("1. Upload Your Own Data or Simulate Data")
 
-    if uploaded_file is not None:
-        df = pd.read_csv(uploaded_file, parse_dates=['date'])
-        st.success("Data loaded successfully!")
-        st.session_state['df'] = df
-    else:
-        st.header("2. Or Simulate Data")
+    # Create two columns
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.subheader("Upload Your Data")
+        uploaded_file = st.file_uploader("Upload a CSV file with 'date' and 'foot_traffic' columns", type=["csv"])
+
+        if uploaded_file is not None:
+            df = pd.read_csv(uploaded_file, parse_dates=['date'])
+            st.success("Data loaded successfully!")
+            st.session_state['df'] = df
+
+    with col2:
+        st.subheader("Simulate Data")
         if st.button("Simulate Data"):
             # Simulate data
             np.random.seed(42)
@@ -88,6 +95,7 @@ def data_simulation():
             st.session_state['df'] = df
 
     if 'df' in st.session_state:
+        st.subheader("Sample of the Data")
         st.write(st.session_state['df'].head())
 
     navigation_buttons()
@@ -99,64 +107,69 @@ def exploratory_data_analysis():
     else:
         df = st.session_state['df']
 
-        # Time Series Plot
-        st.subheader("Foot Traffic Over Time")
-        fig = px.line(df, x='date', y='foot_traffic', title='Daily Foot Traffic',
-                      labels={'foot_traffic': 'Foot Traffic', 'date': 'Date'})
-        st.plotly_chart(fig, use_container_width=True)
+        # Create two columns
+        col1, col2 = st.columns(2)
 
-        # Summary Statistics
-        st.subheader("Summary Statistics")
-        summary_stats = df['foot_traffic'].describe()
-        st.table(summary_stats)
+        with col1:
+            # Time Series Plot
+            st.subheader("Foot Traffic Over Time")
+            fig = px.line(df, x='date', y='foot_traffic', title='Daily Foot Traffic',
+                          labels={'foot_traffic': 'Foot Traffic', 'date': 'Date'})
+            st.plotly_chart(fig, use_container_width=True)
 
-        # Distribution Plot
-        st.subheader("Distribution of Foot Traffic")
+            # Summary Statistics
+            st.subheader("Summary Statistics")
+            summary_stats = df['foot_traffic'].describe()
+            st.table(summary_stats)
 
-        # Create figure
-        fig2 = go.Figure()
+        with col2:
+            # Distribution Plot
+            st.subheader("Distribution of Foot Traffic")
 
-        # Add histogram
-        fig2.add_trace(go.Histogram(
-            x=df['foot_traffic'],
-            nbinsx=30,  # Adjust the number of bins as needed
-            histnorm='probability density',
-            marker_color='rgba(0, 128, 128, 0.6)',  # Teal color with transparency
-            name='Histogram'
-        ))
+            # Create figure
+            fig2 = go.Figure()
 
-        # Generate KDE curve
-        x_values = np.linspace(df['foot_traffic'].min(), df['foot_traffic'].max(), 1000)
-        kde = stats.gaussian_kde(df['foot_traffic'])
-        fig2.add_trace(go.Scatter(
-            x=x_values,
-            y=kde(x_values),
-            mode='lines',
-            name='Density Curve',
-            line=dict(color='darkblue', width=2)
-        ))
+            # Add histogram
+            fig2.add_trace(go.Histogram(
+                x=df['foot_traffic'],
+                nbinsx=30,  # Adjust the number of bins as needed
+                histnorm='probability density',
+                marker_color='rgba(0, 128, 128, 0.6)',  # Teal color with transparency
+                name='Histogram'
+            ))
 
-        # Update layout
-        fig2.update_layout(
-            title='Distribution of Foot Traffic',
-            xaxis_title='Foot Traffic',
-            yaxis_title='Probability Density',
-            bargap=0.05,
-            template='plotly_white',
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.01,
-                xanchor="right",
-                x=1
-            ),
-            margin=dict(l=40, r=40, t=60, b=40)
-        )
+            # Generate KDE curve
+            x_values = np.linspace(df['foot_traffic'].min(), df['foot_traffic'].max(), 1000)
+            kde = stats.gaussian_kde(df['foot_traffic'])
+            fig2.add_trace(go.Scatter(
+                x=x_values,
+                y=kde(x_values),
+                mode='lines',
+                name='Density Curve',
+                line=dict(color='darkblue', width=2)
+            ))
 
-        # Display the plot
-        st.plotly_chart(fig2, use_container_width=True)
+            # Update layout
+            fig2.update_layout(
+                title='Distribution of Foot Traffic',
+                xaxis_title='Foot Traffic',
+                yaxis_title='Probability Density',
+                bargap=0.05,
+                template='plotly_white',
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.01,
+                    xanchor="right",
+                    x=1
+                ),
+                margin=dict(l=40, r=40, t=60, b=40)
+            )
 
-        # Traffic by Day of Week
+            # Display the plot
+            st.plotly_chart(fig2, use_container_width=True)
+
+        # Traffic by Day of Week (below the two columns)
         st.subheader("Average Foot Traffic by Day of Week")
         df['day_of_week'] = df['date'].dt.day_name()
         avg_traffic_weekday = df.groupby('day_of_week')['foot_traffic'].mean().reindex([
@@ -325,26 +338,33 @@ def hotspot_analysis():
         fig_clustered.update_layout(width=800, height=600)
         st.plotly_chart(fig_clustered)
 
-        st.subheader("Cluster Analysis")
+        # Create two columns
+        col1, col2 = st.columns([2, 1])
 
-        # Cluster Centers
-        cluster_centers = pd.DataFrame(kmeans.cluster_centers_, columns=['x', 'y'])
-        cluster_counts = positions['cluster'].value_counts().sort_index()
-        cluster_summary = pd.DataFrame({
-            'Cluster': cluster_counts.index,
-            'Number of Customers': cluster_counts.values,
-            'Center X': cluster_centers['x'],
-            'Center Y': cluster_centers['y']
-        })
-        st.table(cluster_summary)
+        with col1:
+            st.subheader("Clustered Customer Positions")
+            st.plotly_chart(fig_clustered, use_container_width=True)
 
-        st.markdown("""
-        **Insights:**
+        with col2:
+            st.subheader("Cluster Analysis")
+            # Cluster Centers
+            cluster_centers = pd.DataFrame(kmeans.cluster_centers_, columns=['x', 'y'])
+            cluster_counts = positions['cluster'].value_counts().sort_index()
+            cluster_summary = pd.DataFrame({
+                'Cluster': cluster_counts.index,
+                'Number of Customers': cluster_counts.values,
+                'Center X': cluster_centers['x'],
+                'Center Y': cluster_centers['y']
+            })
+            st.table(cluster_summary)
 
-        - The clusters represent areas in the store where customers tend to gather.
-        - Cluster centers indicate the hotspots within the store layout.
-        - Higher customer counts in a cluster suggest more popular areas.
-        """)
+            st.markdown("""
+            **Insights:**
+
+            - The clusters represent areas in the store where customers tend to gather.
+            - Cluster centers indicate the hotspots within the store layout.
+            - Higher customer counts in a cluster suggest more popular areas.
+            """)
 
         # Store data in session_state
         st.session_state['positions'] = positions
@@ -441,32 +461,46 @@ def foot_traffic_forecasting():
         mape = np.mean(forecast_test['abs_error']/forecast_test['y'])*100
         rmse = np.sqrt(np.mean(forecast_test['error']**2))
 
-        st.write(f"**Mean Absolute Percentage Error (MAPE):** {mape:.2f}%")
-        st.write(f"**Root Mean Squared Error (RMSE):** {rmse:.2f}")
+        # Display performance metrics and plots in columns
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown(f"<h3 style='text-align: center;'>Performance Metrics</h3>", unsafe_allow_html=True)
+            st.write(f"**Mean Absolute Percentage Error (MAPE):** {mape:.2f}%")
+            st.write(f"**Root Mean Squared Error (RMSE):** {rmse:.2f}")
 
-        # Plot actual vs. predicted
-        st.subheader("Actual vs. Predicted Foot Traffic")
-        fig_compare = go.Figure()
-        fig_compare.add_trace(go.Scatter(
-            x=forecast_test['ds'],
-            y=forecast_test['y'],
-            mode='lines+markers',
-            name='Actual'
-        ))
-        fig_compare.add_trace(go.Scatter(
-            x=forecast_test['ds'],
-            y=forecast_test['yhat'],
-            mode='lines+markers',
-            name='Predicted'
-        ))
-        fig_compare.update_layout(
-            title='Actual vs. Predicted Foot Traffic',
-            xaxis_title='Date',
-            yaxis_title='Foot Traffic'
-        )
-        st.plotly_chart(fig_compare)
+            # Plot actual vs. predicted
+            st.subheader("Actual vs. Predicted Foot Traffic")
+            fig_compare = go.Figure()
+            fig_compare.add_trace(go.Scatter(
+                x=forecast_test['ds'],
+                y=forecast_test['y'],
+                mode='lines+markers',
+                name='Actual'
+            ))
+            fig_compare.add_trace(go.Scatter(
+                x=forecast_test['ds'],
+                y=forecast_test['yhat'],
+                mode='lines+markers',
+                name='Predicted'
+            ))
+            fig_compare.update_layout(
+                title='Actual vs. Predicted Foot Traffic',
+                xaxis_title='Date',
+                yaxis_title='Foot Traffic'
+            )
+            st.plotly_chart(fig_compare, use_container_width=True)
 
-        # Forecast future
+        with col2:
+            # Plot forecast components
+            st.subheader('Forecast Components')
+            components_fig = model.plot_components(forecast)
+            st.pyplot(components_fig)
+            # Save the figure to session state for use in the report
+            buf = BytesIO()
+            components_fig.savefig(buf, format='png')
+            st.session_state['forecast_components_image'] = buf
+
+        # Future Forecast
         st.subheader("Future Forecast")
         forecast_future = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].iloc[-periods_input:].copy()
         forecast_future = forecast_future.rename(columns={'ds': 'Date', 'yhat': 'Forecasted Foot Traffic',
@@ -475,55 +509,37 @@ def foot_traffic_forecasting():
         st.write(forecast_future)
 
         # Plot future forecast with confidence intervals
-        fig_future = go.Figure([
-            go.Scatter(
-                name='Upper Confidence Interval',
-                x=forecast_future['Date'],
-                y=forecast_future['Upper Confidence Interval'],
-                mode='lines',
-                marker=dict(color="#444"),
-                line=dict(width=0),
-                showlegend=False
-            ),
-            go.Scatter(
-                name='Forecasted Foot Traffic',
-                x=forecast_future['Date'],
-                y=forecast_future['Forecasted Foot Traffic'],
-                mode='lines',
-                line=dict(color='blue'),
-                fill='tonexty',
-                fillcolor='rgba(68, 68, 68, 0.1)',
-            ),
-            go.Scatter(
-                name='Lower Confidence Interval',
-                x=forecast_future['Date'],
-                y=forecast_future['Lower Confidence Interval'],
-                marker=dict(color="#444"),
-                line=dict(width=0),
-                mode='lines',
-                fill='tonexty',
-                fillcolor='rgba(68, 68, 68, 0.1)',
-                showlegend=False
-            )
-        ])
+        fig_future = go.Figure()
+
+        # Add the forecasted foot traffic line
+        fig_future.add_trace(go.Scatter(
+            x=forecast_future['Date'],
+            y=forecast_future['Forecasted Foot Traffic'],
+            mode='lines',
+            name='Forecasted Foot Traffic',
+            line=dict(color='blue')
+        ))
+
+        # Add the confidence interval as a filled area
+        fig_future.add_trace(go.Scatter(
+            x=forecast_future['Date'].tolist() + forecast_future['Date'][::-1].tolist(),
+            y=forecast_future['Upper Confidence Interval'].tolist() + forecast_future['Lower Confidence Interval'][::-1].tolist(),
+            fill='toself',
+            fillcolor='rgba(173,216,230,0.2)',  # Light blue color
+            line=dict(color='rgba(255,255,255,0)'),
+            hoverinfo="skip",
+            showlegend=True,
+            name='Confidence Interval'
+        ))
+
         fig_future.update_layout(
-            title='Foot Traffic Forecast',
+            title='Future Foot Traffic Forecast',
             xaxis_title='Date',
             yaxis_title='Foot Traffic',
-            showlegend=True
+            template='plotly_white'
         )
-        st.plotly_chart(fig_future)
 
-        # Plot forecast components
-        st.subheader('Forecast Components')
-
-        components_fig = model.plot_components(forecast)
-        st.pyplot(components_fig)
-
-        buf = BytesIO()
-        components_fig.savefig(buf, format='png')
-        buf.seek(0)
-        st.session_state['forecast_components_image'] = buf
+        st.plotly_chart(fig_future, use_container_width=True)
 
         st.markdown("""
         **Insights:**
