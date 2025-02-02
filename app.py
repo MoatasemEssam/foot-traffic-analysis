@@ -8,11 +8,11 @@ import plotly.express as px
 import plotly.graph_objects as go
 from prophet.make_holidays import make_holidays_df
 from datetime import datetime
-from scipy import stats  # Importing scipy.stats for statistical functions
+from scipy import stats  
 
 st.set_page_config(layout="wide", initial_sidebar_state="expanded")
 
-# Function to inject custom CSS
+
 def set_background_color():
     st.markdown(
         """
@@ -27,7 +27,7 @@ def set_background_color():
 
 set_background_color()
 
-# Define the list of app modes
+
 app_modes = [
     "Data Simulation",
     "Exploratory Data Analysis (EDA)",
@@ -36,11 +36,11 @@ app_modes = [
     "Business Insights Report"
 ]
 
-# Initialize the app_mode_index in session_state
+
 if 'app_mode_index' not in st.session_state:
     st.session_state['app_mode_index'] = 0
 
-# Functions to handle Next and Back
+
 def next_app_mode():
     if st.session_state['app_mode_index'] < len(app_modes) - 1:
         st.session_state['app_mode_index'] += 1
@@ -49,7 +49,7 @@ def prev_app_mode():
     if st.session_state['app_mode_index'] > 0:
         st.session_state['app_mode_index'] -= 1
 
-# Function to display navigation buttons at the bottom
+
 def navigation_buttons():
     st.markdown("---")
     col1, col2, col3 = st.columns([1, 6, 1])
@@ -58,11 +58,11 @@ def navigation_buttons():
     with col3:
         st.button('Next', on_click=next_app_mode, disabled=(st.session_state['app_mode_index'] == len(app_modes) - 1))
 
-# Function for Data Simulation
+
 def data_simulation():
     st.header("1. Upload Your Own Data or Simulate Data")
 
-    # Create two columns
+
     col1, col2 = st.columns(2)
 
     with col1:
@@ -77,7 +77,7 @@ def data_simulation():
     with col2:
         st.subheader("Simulate Data")
         if st.button("Simulate Data"):
-            # Simulate data
+          
             np.random.seed(42)
             dates = pd.date_range(start='2023-01-01', periods=180, freq='D')
             foot_traffic = (
@@ -100,45 +100,45 @@ def data_simulation():
 
     navigation_buttons()
 
-# Function for Exploratory Data Analysis
+
 def exploratory_data_analysis():
     if 'df' not in st.session_state:
         st.warning("Please upload or simulate data first in the 'Data Simulation' section.")
     else:
         df = st.session_state['df']
 
-        # Create two columns
+       
         col1, col2 = st.columns(2)
 
         with col1:
-            # Time Series Plot
+            
             st.subheader("Foot Traffic Over Time")
             fig = px.line(df, x='date', y='foot_traffic', title='Daily Foot Traffic',
                           labels={'foot_traffic': 'Foot Traffic', 'date': 'Date'})
             st.plotly_chart(fig, use_container_width=True)
 
-            # Summary Statistics
+           
             st.subheader("Summary Statistics")
             summary_stats = df['foot_traffic'].describe()
             st.table(summary_stats)
 
         with col2:
-            # Distribution Plot
+           
             st.subheader("Distribution of Foot Traffic")
 
-            # Create figure
+            
             fig2 = go.Figure()
 
-            # Add histogram
+          
             fig2.add_trace(go.Histogram(
                 x=df['foot_traffic'],
-                nbinsx=30,  # Adjust the number of bins as needed
+                nbinsx=30,  
                 histnorm='probability density',
-                marker_color='rgba(0, 128, 128, 0.6)',  # Teal color with transparency
+                marker_color='rgba(0, 128, 128, 0.6)',  
                 name='Histogram'
             ))
 
-            # Generate KDE curve
+           
             x_values = np.linspace(df['foot_traffic'].min(), df['foot_traffic'].max(), 1000)
             kde = stats.gaussian_kde(df['foot_traffic'])
             fig2.add_trace(go.Scatter(
@@ -149,7 +149,7 @@ def exploratory_data_analysis():
                 line=dict(color='darkblue', width=2)
             ))
 
-            # Update layout
+         
             fig2.update_layout(
                 title='Distribution of Foot Traffic',
                 xaxis_title='Foot Traffic',
@@ -166,10 +166,10 @@ def exploratory_data_analysis():
                 margin=dict(l=40, r=40, t=60, b=40)
             )
 
-            # Display the plot
+           
             st.plotly_chart(fig2, use_container_width=True)
 
-        # Traffic by Day of Week (below the two columns)
+        
         st.subheader("Average Foot Traffic by Day of Week")
         df['day_of_week'] = df['date'].dt.day_name()
         avg_traffic_weekday = df.groupby('day_of_week')['foot_traffic'].mean().reindex([
@@ -181,7 +181,7 @@ def exploratory_data_analysis():
 
     navigation_buttons()
 
-# Function for Hotspot Analysis
+
 def hotspot_analysis():
     st.markdown("""
     # Hotspot Analysis
@@ -200,7 +200,7 @@ def hotspot_analysis():
 
     positions = None
 
-    # File uploader for positions data
+    
     uploaded_file = st.file_uploader("Upload a CSV file with 'x' and 'y' columns", type=["csv"])
     if uploaded_file is not None:
         try:
@@ -214,7 +214,7 @@ def hotspot_analysis():
         except Exception as e:
             st.error(f"An error occurred while reading the file: {e}")
 
-    # Simulate data button
+    
     st.subheader("Or Simulate Customer Positions")
     num_customers = st.number_input(
         "Enter the number of customers to simulate",
@@ -240,23 +240,23 @@ def hotspot_analysis():
         You can either use a predefined store layout or upload a file containing the store's wall coordinates.
         """)
 
-        # Layout Options
+     
         layout_option = st.selectbox("Choose store layout option", ["Default Layout", "Upload Layout File"])
 
         if layout_option == "Default Layout":
-            # Define walls as lines between points
+            
             walls = [
-                {'x0': 0, 'y0': 0, 'x1': 100, 'y1': 0},     # Bottom wall
-                {'x0': 100, 'y0': 0, 'x1': 100, 'y1': 100},  # Right wall
-                {'x0': 100, 'y0': 100, 'x1': 0, 'y1': 100},  # Top wall
-                {'x0': 0, 'y0': 100, 'x1': 0, 'y1': 0},     # Left wall
-                # Interior wall example
+                {'x0': 0, 'y0': 0, 'x1': 100, 'y1': 0},     
+                {'x0': 100, 'y0': 0, 'x1': 100, 'y1': 100}, 
+                {'x0': 100, 'y0': 100, 'x1': 0, 'y1': 100},  
+                {'x0': 0, 'y0': 100, 'x1': 0, 'y1': 0},   
+          
                 {'x0': 50, 'y0': 0, 'x1': 50, 'y1': 50},
                 {'x0': 50, 'y0': 50, 'x1': 100, 'y1': 50}
             ]
             st.success("Using default store layout.")
         else:
-            # Upload layout file
+            
             st.subheader("Upload Store Layout File")
             st.markdown("""
             Please upload a CSV file containing wall coordinates with columns: **'x0'**, **'y0'**, **'x1'**, **'y1'**.
@@ -280,11 +280,11 @@ def hotspot_analysis():
                 st.warning("Please upload a CSV file containing wall coordinates.")
                 walls = []
 
-        # Customer Positions with Store Layout
+     
         st.subheader("Customer Positions with Store Layout")
         fig = go.Figure()
 
-        # Plot customer positions
+     
         fig.add_trace(go.Scatter(
             x=positions['x'], y=positions['y'],
             mode='markers',
@@ -292,7 +292,7 @@ def hotspot_analysis():
             marker=dict(color='blue', size=5, opacity=0.5)
         ))
 
-        # Add walls as shapes
+      
         for wall in walls:
             fig.add_shape(
                 type="line",
@@ -312,7 +312,7 @@ def hotspot_analysis():
 
         st.subheader("Clustering and Hotspot Identification")
 
-        # Clustering
+  
         optimal_k = st.number_input(
             "Enter the number of clusters (k) for KMeans clustering",
             min_value=1,
@@ -323,11 +323,11 @@ def hotspot_analysis():
         kmeans = KMeans(n_clusters=int(optimal_k), random_state=42)
         positions['cluster'] = kmeans.fit_predict(positions[['x', 'y']])
 
-        # Plot clustered positions
+      
         fig_clustered = px.scatter(positions, x='x', y='y', color=positions['cluster'].astype(str),
                                    title='Customer Clusters',
                                    labels={'x': 'X Position', 'y': 'Y Position', 'color': 'Cluster'})
-        # Add walls to the plot
+      
         for wall in walls:
             fig_clustered.add_shape(
                 type="line",
@@ -338,7 +338,7 @@ def hotspot_analysis():
         fig_clustered.update_layout(width=800, height=600)
         st.plotly_chart(fig_clustered)
 
-        # Create two columns
+       
         col1, col2 = st.columns([2, 1])
 
         with col1:
@@ -347,7 +347,7 @@ def hotspot_analysis():
 
         with col2:
             st.subheader("Cluster Analysis")
-            # Cluster Centers
+            
             cluster_centers = pd.DataFrame(kmeans.cluster_centers_, columns=['x', 'y'])
             cluster_counts = positions['cluster'].value_counts().sort_index()
             cluster_summary = pd.DataFrame({
@@ -366,7 +366,7 @@ def hotspot_analysis():
             - Higher customer counts in a cluster suggest more popular areas.
             """)
 
-        # Store data in session_state
+        
         st.session_state['positions'] = positions
         st.session_state['cluster_summary'] = cluster_summary
         st.session_state['fig_clustered'] = fig_clustered
@@ -376,18 +376,18 @@ def hotspot_analysis():
 
     navigation_buttons()
 
-# Function for Foot Traffic Forecasting
+
 def foot_traffic_forecasting():
     if 'df' not in st.session_state:
         st.warning("Please upload or simulate data first in the 'Data Simulation' section.")
     else:
         df = st.session_state['df']
 
-        # Select forecast parameters
+        
         st.subheader("Forecast Parameters")
         periods_input = st.number_input('Number of days to forecast into the future:', min_value=1, max_value=365, value=30)
 
-        # Option to include holidays
+       
         st.subheader("Include Holidays in the Model")
         holiday_option = st.radio(
             "Do you want to include holidays in the model?",
@@ -395,7 +395,7 @@ def foot_traffic_forecasting():
         )
 
         if holiday_option == 'Use Predefined Holidays':
-            # Define a dataframe of predefined holidays (example using US holidays)
+           
             years = [df['date'].dt.year.min(), df['date'].dt.year.max() + 1]
             holidays = make_holidays_df(year_list=list(range(years[0], years[1] + 1)), country='US')
             st.success("Predefined holidays included in the model.")
@@ -433,26 +433,26 @@ def foot_traffic_forecasting():
         else:
             holidays = None
 
-        # Split data into training and testing
+        
         st.subheader("Model Training and Evaluation")
         test_size = st.slider('Number of days in test set:', min_value=7, max_value=90, value=30, step=7)
         df_train = df.iloc[:-test_size]
         df_test = df.iloc[-test_size:]
 
-        # Prepare data for Prophet
+ 
         df_train_prophet = df_train.rename(columns={'date': 'ds', 'foot_traffic': 'y'})
         df_test_prophet = df_test.rename(columns={'date': 'ds', 'foot_traffic': 'y'})
 
-        # Initialize and train the model
+       
         with st.spinner('Training the forecasting model...'):
             model = Prophet(holidays=holidays, yearly_seasonality=True, weekly_seasonality=True, daily_seasonality=False)
             model.fit(df_train_prophet)
 
-        # Prepare future dataframe
+     
         future = model.make_future_dataframe(periods=test_size + periods_input)
         forecast = model.predict(future)
 
-        # Evaluate model performance
+      
         st.subheader("Model Performance on Test Data")
         forecast_test = forecast[forecast['ds'].isin(df_test_prophet['ds'])]
         forecast_test = forecast_test.merge(df_test_prophet[['ds', 'y']], on='ds')
@@ -461,14 +461,14 @@ def foot_traffic_forecasting():
         mape = np.mean(forecast_test['abs_error']/forecast_test['y'])*100
         rmse = np.sqrt(np.mean(forecast_test['error']**2))
 
-        # Display performance metrics and plots in columns
+       
         col1, col2 = st.columns(2)
         with col1:
             st.markdown(f"<h3 style='text-align: center;'>Performance Metrics</h3>", unsafe_allow_html=True)
             st.write(f"**Mean Absolute Percentage Error (MAPE):** {mape:.2f}%")
             st.write(f"**Root Mean Squared Error (RMSE):** {rmse:.2f}")
 
-            # Plot actual vs. predicted
+           
             st.subheader("Actual vs. Predicted Foot Traffic")
             fig_compare = go.Figure()
             fig_compare.add_trace(go.Scatter(
@@ -491,16 +491,16 @@ def foot_traffic_forecasting():
             st.plotly_chart(fig_compare, use_container_width=True)
 
         with col2:
-            # Plot forecast components
+           
             st.subheader('Forecast Components')
             components_fig = model.plot_components(forecast)
             st.pyplot(components_fig)
-            # Save the figure to session state for use in the report
+          
             buf = BytesIO()
             components_fig.savefig(buf, format='png')
             st.session_state['forecast_components_image'] = buf
 
-        # Future Forecast
+      
         st.subheader("Future Forecast")
         forecast_future = forecast[['ds', 'yhat', 'yhat_lower', 'yhat_upper']].iloc[-periods_input:].copy()
         forecast_future = forecast_future.rename(columns={'ds': 'Date', 'yhat': 'Forecasted Foot Traffic',
@@ -508,10 +508,10 @@ def foot_traffic_forecasting():
                                                           'yhat_upper': 'Upper Confidence Interval'})
         st.write(forecast_future)
 
-        # Plot future forecast with confidence intervals
+       
         fig_future = go.Figure()
 
-        # Add the forecasted foot traffic line
+        
         fig_future.add_trace(go.Scatter(
             x=forecast_future['Date'],
             y=forecast_future['Forecasted Foot Traffic'],
@@ -520,12 +520,12 @@ def foot_traffic_forecasting():
             line=dict(color='blue')
         ))
 
-        # Add the confidence interval as a filled area
+        
         fig_future.add_trace(go.Scatter(
             x=forecast_future['Date'].tolist() + forecast_future['Date'][::-1].tolist(),
             y=forecast_future['Upper Confidence Interval'].tolist() + forecast_future['Lower Confidence Interval'][::-1].tolist(),
             fill='toself',
-            fillcolor='rgba(173,216,230,0.2)',  # Light blue color
+            fillcolor='rgba(173,216,230,0.2)', 
             line=dict(color='rgba(255,255,255,0)'),
             hoverinfo="skip",
             showlegend=True,
@@ -549,7 +549,7 @@ def foot_traffic_forecasting():
         - The components plot reveals patterns in the data, such as trends, weekly seasonality, and the effect of holidays.
         """)
 
-        # Store variables in session_state
+       
         st.session_state['forecast'] = forecast
         st.session_state['forecast_future'] = forecast_future
         st.session_state['fig_future'] = fig_future
@@ -557,7 +557,7 @@ def foot_traffic_forecasting():
 
     navigation_buttons()
 
-# Function for Business Insights Report
+
 def business_insights_report():
     if 'df' not in st.session_state:
         st.warning("Please complete the previous sections to generate the report.")
@@ -565,13 +565,13 @@ def business_insights_report():
         df = st.session_state['df']
         df['date'] = pd.to_datetime(df['date'])
 
-        # Function to generate the report HTML
+        
         def generate_report_html():
             import base64
 
             report_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            # Initialize an HTML content string
+          
             html_parts = []
             html_parts.append(f"""
             <html>
@@ -593,7 +593,7 @@ def business_insights_report():
             <p><strong>Generated on:</strong> {report_date}</p>
             """)
 
-            # Foot Traffic Forecast
+          
             html_parts.append("<h2>Foot Traffic Forecast</h2>")
 
             if 'forecast_future' in st.session_state and 'fig_future' in st.session_state:
@@ -601,17 +601,17 @@ def business_insights_report():
                 fig_future = st.session_state['fig_future']
                 periods_input = st.session_state.get('periods_input', 30)
 
-                # Convert the forecast plot to HTML
+              
                 fig_future_html = fig_future.to_html(include_plotlyjs='cdn', full_html=False)
                 html_parts.append("<h3>Forecasted Foot Traffic</h3>")
                 html_parts.append(fig_future_html)
 
-                # Convert forecast data to HTML table
+              
                 forecast_future_html = forecast_future.to_html(index=False)
                 html_parts.append("<h3>Forecast Data</h3>")
                 html_parts.append(forecast_future_html)
 
-                # Include the forecast components image
+             
                 if 'forecast_components_image' in st.session_state:
                     buf = st.session_state['forecast_components_image']
                     base64_img = base64.b64encode(buf.getvalue()).decode('utf-8')
@@ -622,24 +622,24 @@ def business_insights_report():
             else:
                 html_parts.append("<p><em>Forecast data not available. Please complete the Foot Traffic Forecasting section.</em></p>")
 
-            # End of HTML content
+            
             html_parts.append("""
             </body>
             </html>
             """)
 
-            # Combine all parts into a single HTML
+           
             html_report = ''.join(html_parts)
 
             return html_report
 
-        # Generate the report HTML
+        
         html_report = generate_report_html()
 
-        # Display the report in the app
+        
         st.components.v1.html(html_report, height=800, scrolling=True)
 
-        # Provide a download button
+        
         st.subheader("Download Report")
         st.write("Click the button below to download the report as an HTML file.")
         st.download_button(
@@ -651,12 +651,12 @@ def business_insights_report():
 
     navigation_buttons()
 
-# Main code to run the app
+
 def main():
-    # Set the current app mode
+   
     app_mode = app_modes[st.session_state['app_mode_index']]
 
-    # Call the appropriate function based on app_mode
+    
     if app_mode == "Data Simulation":
         data_simulation()
     elif app_mode == "Exploratory Data Analysis (EDA)":
